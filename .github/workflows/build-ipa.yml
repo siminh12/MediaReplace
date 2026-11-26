@@ -1,0 +1,42 @@
+name: Build IPA
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build unsigned IPA
+    runs-on: macos-14
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Archive (no signing)
+        run: |
+          xcodebuild archive \
+            -project MediaReplace/MediaReplace.xcodeproj \
+            -scheme MediaReplace \
+            -configuration Release \
+            -archivePath build/MediaReplace.xcarchive \
+            -destination "generic/platform=iOS" \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Package IPA
+        run: |
+          mkdir -p Payload
+          cp -r build/MediaReplace.xcarchive/Products/Applications/MediaReplace.app Payload/
+          zip -r MediaReplace.ipa Payload
+          ls -lh MediaReplace.ipa
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: MediaReplace-unsigned-ipa
+          path: MediaReplace.ipa
+          if-no-files-found: error
